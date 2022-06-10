@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"os"
 	"net/http"
 )
@@ -52,15 +53,13 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 	if pretty {
 		pretty_json, err := prettyJSON(buffer)
 		if err == nil {
-			log.Println(pretty_json.String())
+			log.Info().RawJSON("payload", pretty_json.Bytes()).Msg("webhook")
 		} else {
-			log.Println(buffer.String())
+			log.Info().RawJSON("payload", buffer.Bytes()).Msg("webhook")
 		}
 	} else {
-		log.Println(buffer.String())
+		log.Info().RawJSON("payload", buffer.Bytes()).Msg("webhook")
 	}
-
-	//log.Println(buffer.String())
 }
 
 func prettyJSON(ugly bytes.Buffer) (bytes.Buffer, error) {
@@ -72,16 +71,17 @@ func prettyJSON(ugly bytes.Buffer) (bytes.Buffer, error) {
 }
 
 func main() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	_, pretty = os.LookupEnv("JSON_PRETTY")
 
 	if pretty {
-		log.Println("pretty output enabled")
+		log.Info().Msg("pretty output enabled")
 	}
 
-	log.Println("Server starting on 8080")
+	log.Info().Msg("Server starting on 8080")
 	http.HandleFunc("/", handleIndex)
 	http.HandleFunc("/health", handleHealth)
 	http.HandleFunc("/ready", handleReady)
 	http.HandleFunc("/webhook", handleWebhook)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal().Err(http.ListenAndServe(":8080", nil))
 }
