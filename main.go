@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"net/http"
 )
+
+var pretty bool
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
@@ -31,25 +34,50 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// dump the request
-	log.Println(">>>New Request<<<")
-	for key, val := range r.Header {
-		log.Println(key, " : ", val)
+	var buffer bytes.Buffer
+
+	// dump the headers
+	headers, headersErr := json.Marshal(r.Header)
+	
+	// read the body
+	body := new(bytes.Buffer)
+	body.ReadFrom(r.Body)
+
+	if headersErr == nil {
+		fmt.Fprintf(&buffer, "{\"headers\": %s, \"body\": %s}", headers, body)
+	} else {
+		fmt.Fprintf(&buffer, "{\"body\": %s}", body)
 	}
 
-	var prettyJSON bytes.Buffer
-	buffer := new(bytes.Buffer)
-	buffer.ReadFrom(r.Body)
-	err := json.Indent(&prettyJSON, buffer.Bytes(), "", "\t")
-	if err != nil {
-		log.Println("JSON parse error", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
+	if pretty {
+		pretty_json, err := prettyJSON(buffer)
+		if err == nil {
+			log.Println(pretty_json.String())
+		} else {
+			log.Println(buffer.String())
+		}
+	} else {
+		log.Println(buffer.String())
 	}
-	log.Println(string(prettyJSON.Bytes()))
+
+	//log.Println(buffer.String())
+}
+
+func prettyJSON(ugly bytes.Buffer) (bytes.Buffer, error) {
+	var buff bytes.Buffer
+
+	err := json.Indent(&buff, ugly.Bytes(), "", "  ")
+	
+	return buff, err
 }
 
 func main() {
+	_, pretty = os.LookupEnv("JSON_PRETTY")
+
+	if pretty {
+		log.Println("pretty output enabled")
+	}
+
 	log.Println("Server starting on 8080")
 	http.HandleFunc("/", handleIndex)
 	http.HandleFunc("/health", handleHealth)
