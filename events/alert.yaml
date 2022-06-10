@@ -2,7 +2,7 @@ apiVersion: notification.toolkit.fluxcd.io/v1beta1
 kind: Alert
 metadata:
   name: catch-all
-  namespace: wego-system
+  namespace: flux-system
 spec:
   providerRef:
     name: generic-webhook
@@ -11,4 +11,8 @@ spec:
     - kind: GitRepository
       name: '*'
     - kind: Kustomization
+      name: '*'
+    - kind: HelmRepository
+      name: '*'
+    - kind: HelmRelease
       name: '*'
